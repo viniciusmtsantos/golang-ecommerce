@@ -1,3 +1,2 @@
-# Run project
-go:
-	@go run cmd/golang-ecommerce/main.go
+server:
+	@nodemon --watch './**/*.go' --signal SIGTERM --exec APP_ENV=dev 'go' run cmd/golang-ecommerce/main.go
