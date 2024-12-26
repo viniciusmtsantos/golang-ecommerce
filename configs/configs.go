@@ -13,9 +13,9 @@ type ApplicationConfig struct {
 
 func SetupEnvironment() (cfg ApplicationConfig, err error) {
 
-	// if os.Getenv("APP_ENV") == "dev" {
-	godotenv.Load()
-	// }
+	if os.Getenv("APP_ENV") == "dev" {
+		godotenv.Load()
+	}
 
 	httpPort := os.Getenv("HTTP_PORT")
 	if len(httpPort) < 1 {
