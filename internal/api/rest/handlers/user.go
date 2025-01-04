@@ -6,11 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/api/rest"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/dto"
+	"github.com/viniciusmtsantos/golang-ecommerce/internal/repository"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/service"
 )
 
 type User struct {
-	// svc UserService
 	svc service.User
 }
 
@@ -18,7 +18,10 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 
 	app := rh.App
 
-	svc := service.User{}
+	svc := service.User{
+		Repo: repository.NewUserRepository(rh.DB),
+	}
+
 	handler := User{
 		svc: svc,
 	}
@@ -62,9 +65,25 @@ func (u *User) Register(ctx *fiber.Ctx) error {
 }
 
 func (u *User) Login(ctx *fiber.Ctx) error {
+	loginInput := dto.UserLogin{}
+
+	err := ctx.BodyParser(&loginInput)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(&fiber.Map{
+			"message": "please provide valid inputs",
+		})
+	}
+
+	token, err := u.svc.Login(loginInput.Email, loginInput.Password)
+	if err != nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(&fiber.Map{
+			"message": "please provide correct user id password",
+		})
+	}
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "login",
+		"token":   token,
 	})
 }
 
