@@ -5,17 +5,23 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/api/rest"
+	"github.com/viniciusmtsantos/golang-ecommerce/internal/dto"
+	"github.com/viniciusmtsantos/golang-ecommerce/internal/service"
 )
 
 type User struct {
 	// svc UserService
+	svc service.User
 }
 
 func SetupUserRoutes(rh *rest.RestHandler) {
 
 	app := rh.App
 
-	handler := User{}
+	svc := service.User{}
+	handler := User{
+		svc: svc,
+	}
 
 	app.Post("/register", handler.Register)
 	app.Post("/login", handler.Login)
@@ -34,8 +40,24 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 
 func (u *User) Register(ctx *fiber.Ctx) error {
 
+	user := dto.UserSignUp{}
+
+	err := ctx.BodyParser(&user)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(&fiber.Map{
+			"message": "please provide valid inputs",
+		})
+	}
+
+	token, err := u.svc.SignUp(user)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
+			"message": "error on signup",
+		})
+	}
+
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
-		"message": "register",
+		"message": token,
 	})
 }
 
