@@ -8,6 +8,7 @@ import (
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/api/rest"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/api/rest/handlers"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/domain"
+	"github.com/viniciusmtsantos/golang-ecommerce/internal/helper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -20,13 +21,16 @@ func StartServer(config configs.ApplicationConfig) {
 		log.Fatalf("database connection error %v\n", err)
 	}
 
+	auth := helper.SetUpAuth(config.Secret)
+
 	log.Println("database connected")
 
 	db.AutoMigrate(&domain.User{})
 
 	rh := &rest.RestHandler{
-		App: app,
-		DB:  db,
+		App:  app,
+		DB:   db,
+		Auth: auth,
 	}
 
 	setupRoutes(rh)

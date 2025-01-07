@@ -20,24 +20,28 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 
 	svc := service.User{
 		Repo: repository.NewUserRepository(rh.DB),
+		Auth: rh.Auth,
 	}
 
 	handler := User{
 		svc: svc,
 	}
 
-	app.Post("/register", handler.Register)
-	app.Post("/login", handler.Login)
+	pubRoutes := app.Group("/users")
+	pubRoutes.Post("/register", handler.Register)
+	pubRoutes.Post("/login", handler.Login)
 
-	app.Get("/verify", handler.GetVerificationCode)
-	app.Post("/verify", handler.Verify)
-	app.Post("/profile", handler.CreateProfile)
-	app.Get("/profile", handler.GetProfile)
+	pvtRoutes := pubRoutes.Group("/", rh.Auth.Authorize)
 
-	app.Post("/cart", handler.AddToCart)
-	app.Get("/cart", handler.GetCart)
-	app.Get("/order", handler.GetOrders)
-	app.Get("/order/:id", handler.GetOrder)
+	pvtRoutes.Get("/verify", handler.GetVerificationCode)
+	pvtRoutes.Post("/verify", handler.Verify)
+	pvtRoutes.Post("/profile", handler.CreateProfile)
+	pvtRoutes.Get("/profile", handler.GetProfile)
+
+	pvtRoutes.Post("/cart", handler.AddToCart)
+	pvtRoutes.Get("/cart", handler.GetCart)
+	pvtRoutes.Get("/order", handler.GetOrders)
+	pvtRoutes.Get("/order/:id", handler.GetOrder)
 
 }
 
@@ -60,7 +64,8 @@ func (u *User) Register(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
-		"message": token,
+		"message": "register",
+		"token":   token,
 	})
 }
 
