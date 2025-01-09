@@ -76,13 +76,13 @@ func (a Auth) VerifyPassword(pP string, hP string) error {
 
 func (a Auth) VerifyToken(t string) (domain.User, error) {
 	tokenArr := strings.Split(t, " ")
-	if len(tokenArr) == 2 {
+	if len(tokenArr) != 2 {
 		return domain.User{}, nil
 	}
 
 	tokenStr := tokenArr[1]
 
-	if tokenStr == "Bearer" {
+	if tokenArr[0] != "Bearer" {
 		return domain.User{}, errors.New("Invalid token")
 	}
 
@@ -119,6 +119,13 @@ func (a Auth) VerifyToken(t string) (domain.User, error) {
 func (a Auth) Authorize(ctx *fiber.Ctx) error {
 
 	authHeader := ctx.GetReqHeaders()["Authorization"]
+
+	if authHeader == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(&fiber.Map{
+			"message": "authorization failed",
+			"reason":  "authorization empty",
+		})
+	}
 
 	user, err := a.VerifyToken(authHeader[0])
 
