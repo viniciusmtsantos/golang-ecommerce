@@ -8,9 +8,12 @@ import (
 )
 
 type ApplicationConfig struct {
-	ServerPort string
-	DSN        string
-	Secret     string
+	ServerPort         string
+	DSN                string
+	Secret             string
+	AWSAccessKeyID     string
+	AWSAccessKeySecret string
+	AWSRegion          string
 }
 
 func SetupEnvironment() (cfg ApplicationConfig, err error) {
@@ -34,5 +37,27 @@ func SetupEnvironment() (cfg ApplicationConfig, err error) {
 		return ApplicationConfig{}, errors.New("env variables not found")
 	}
 
-	return ApplicationConfig{ServerPort: httpPort, DSN: dsn, Secret: appSecret}, nil
+	awsAccessKeyID := os.Getenv("AWS_SNS_ACCESS_KEY_ID")
+	if len(appSecret) < 1 {
+		return ApplicationConfig{}, errors.New("env variables not found")
+	}
+
+	awsAccessKeySecret := os.Getenv("AWS_SNS_SECRET_ACCESS_KEY")
+	if len(appSecret) < 1 {
+		return ApplicationConfig{}, errors.New("env variables not found")
+	}
+
+	awsRegion := os.Getenv("AWS_REGION")
+	if len(appSecret) < 1 {
+		return ApplicationConfig{}, errors.New("env variables not found")
+	}
+
+	return ApplicationConfig{
+		ServerPort:         httpPort,
+		DSN:                dsn,
+		Secret:             appSecret,
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSAccessKeySecret: awsAccessKeySecret,
+		AWSRegion:          awsRegion,
+	}, nil
 }

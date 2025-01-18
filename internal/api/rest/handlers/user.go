@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,8 +20,9 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 	app := rh.App
 
 	svc := service.UserService{
-		Repo: repository.NewUserRepository(rh.DB),
-		Auth: rh.Auth,
+		Repo:   repository.NewUserRepository(rh.DB),
+		Auth:   rh.Auth,
+		Config: rh.Config,
 	}
 
 	handler := UserHandler{
@@ -95,16 +97,15 @@ func (h *UserHandler) GetVerificationCode(ctx *fiber.Ctx) error {
 
 	user := h.svc.Auth.GetCurrentUser(ctx)
 
-	code, err := h.svc.GetVerificationCode(user)
+	err := h.svc.GetVerificationCode(user)
 	if err != nil {
 		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
-			"message": "unable to generate verification code",
+			"message": fmt.Sprintf("unable to generate verification code, %v", err.Error()),
 		})
 	}
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
-		"message": "get verification",
-		"data":    code,
+		"message": "verification code was sent",
 	})
 }
 

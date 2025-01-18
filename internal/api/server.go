@@ -28,9 +28,10 @@ func StartServer(config configs.ApplicationConfig) {
 	db.AutoMigrate(&domain.User{})
 
 	rh := &rest.RestHandler{
-		App:  app,
-		DB:   db,
-		Auth: auth,
+		App:    app,
+		DB:     db,
+		Auth:   auth,
+		Config: config,
 	}
 
 	setupRoutes(rh)

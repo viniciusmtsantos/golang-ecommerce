@@ -2,17 +2,21 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/viniciusmtsantos/golang-ecommerce/configs"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/domain"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/dto"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/helper"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/repository"
+	"github.com/viniciusmtsantos/golang-ecommerce/pkg/notification"
 )
 
 type UserService struct {
-	Repo repository.UserRepository
-	Auth helper.Auth
+	Repo   repository.UserRepository
+	Auth   helper.Auth
+	Config configs.ApplicationConfig
 }
 
 func (s UserService) SignUp(input dto.UserSignUp) (string, error) {
@@ -66,15 +70,15 @@ func (s UserService) isVerifiedUser(id uint) bool {
 	return err == nil && currentUser.Verified
 }
 
-func (s UserService) GetVerificationCode(e domain.User) (int, error) {
+func (s UserService) GetVerificationCode(e domain.User) error {
 
 	if s.isVerifiedUser(e.ID) {
-		return 0, errors.New("user is already verified")
+		return errors.New("user is already verified")
 	}
 
 	code, err := s.Auth.GenerateCode()
 	if err != nil {
-		return 0, nil
+		return nil
 	}
 
 	user := domain.User{
@@ -84,10 +88,21 @@ func (s UserService) GetVerificationCode(e domain.User) (int, error) {
 
 	_, err = s.Repo.UpdateUser(e.ID, user)
 	if err != nil {
-		return 0, errors.New("unable to update verification code")
+		return errors.New("unable to update verification code")
 	}
 
-	return code, nil
+	user, _ = s.Repo.FindUserByID(e.ID)
+
+	notificationClient := notification.NewNotificationClient(s.Config)
+
+	msg := fmt.Sprintf("Your vericiation code is %v", code)
+
+	err = notificationClient.SendSMS(user.Phone, msg)
+	if err != nil {
+		return errors.New("error on sendind otp sms")
+	}
+
+	return nil
 }
 
 func (s UserService) VerifyCode(id uint, code int) error {
@@ -117,8 +132,6 @@ func (s UserService) VerifyCode(id uint, code int) error {
 	if err != nil {
 		return errors.New("unable to update verify user")
 	}
-
-	// send SMS
 
 	return nil
 }
