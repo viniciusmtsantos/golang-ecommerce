@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/domain"
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/dto"
@@ -9,12 +10,12 @@ import (
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/repository"
 )
 
-type User struct {
+type UserService struct {
 	Repo repository.UserRepository
 	Auth helper.Auth
 }
 
-func (s User) SignUp(input dto.UserSignUp) (string, error) {
+func (s UserService) SignUp(input dto.UserSignUp) (string, error) {
 
 	hPassword, err := s.Auth.CreateHashedPassword(input.Password)
 
@@ -35,14 +36,14 @@ func (s User) SignUp(input dto.UserSignUp) (string, error) {
 	return s.Auth.GenerateToken(user.ID, user.Email, user.UserType)
 }
 
-func (s User) findUserByEmail(email string) (*domain.User, error) {
+func (s UserService) findUserByEmail(email string) (*domain.User, error) {
 
 	user, err := s.Repo.FindUser(email)
 
 	return &user, err
 }
 
-func (s User) Login(email string, password string) (string, error) {
+func (s UserService) Login(email string, password string) (string, error) {
 
 	user, err := s.findUserByEmail(email)
 	if err != nil {
@@ -58,42 +59,98 @@ func (s User) Login(email string, password string) (string, error) {
 	return s.Auth.GenerateToken(user.ID, user.Email, user.UserType)
 }
 
-func (s User) GetVerificationCode(e domain.User) (string, error) {
-	return "", nil
+func (s UserService) isVerifiedUser(id uint) bool {
+
+	currentUser, err := s.Repo.FindUserByID(id)
+
+	return err == nil && currentUser.Verified
 }
 
-func (s User) VerifyCode(id uint, code int) (string, error) {
-	return "", nil
+func (s UserService) GetVerificationCode(e domain.User) (int, error) {
+
+	if s.isVerifiedUser(e.ID) {
+		return 0, errors.New("user is already verified")
+	}
+
+	code, err := s.Auth.GenerateCode()
+	if err != nil {
+		return 0, nil
+	}
+
+	user := domain.User{
+		Expiry: time.Now().Add(30 * time.Minute),
+		Code:   code,
+	}
+
+	_, err = s.Repo.UpdateUser(e.ID, user)
+	if err != nil {
+		return 0, errors.New("unable to update verification code")
+	}
+
+	return code, nil
 }
 
-func (s User) CreateProfile(id uint, input any) (string, error) {
-	return "", nil
-}
+func (s UserService) VerifyCode(id uint, code int) error {
 
-func (s User) GetProfile(id uint) (*domain.User, error) {
-	return nil, nil
-}
+	if s.isVerifiedUser(id) {
+		return errors.New("user is already verified")
+	}
 
-func (s User) UpdateProfile(id uint, input any) error {
+	user, err := s.Repo.FindUserByID(id)
+	if err != nil {
+		return err
+	}
+
+	if user.Code != code {
+		return errors.New("verification code does not match")
+	}
+
+	if time.Now().After(user.Expiry) {
+		return errors.New("verification code expired")
+	}
+
+	updateUser := domain.User{
+		Verified: true,
+	}
+
+	_, err = s.Repo.UpdateUser(id, updateUser)
+	if err != nil {
+		return errors.New("unable to update verify user")
+	}
+
+	// send SMS
+
 	return nil
 }
 
-func (s User) FindCart(id uint) ([]interface{}, error) {
+func (s UserService) CreateProfile(id uint, input any) (string, error) {
+	return "", nil
+}
+
+func (s UserService) GetProfile(id uint) (*domain.User, error) {
 	return nil, nil
 }
 
-func (s User) CreateCart(id uint) ([]interface{}, error) {
+func (s UserService) UpdateProfile(id uint, input any) error {
+	return nil
+}
+
+func (s UserService) FindCart(id uint) ([]interface{}, error) {
 	return nil, nil
 }
 
-func (s User) CreateOrder(u domain.User) (int, error) {
+func (s UserService) CreateCart(id uint) ([]interface{}, error) {
+	return nil, nil
+}
+
+func (s UserService) CreateOrder(u domain.User) (int, error) {
 	return 0, nil
 }
 
-func (s User) GetOrders(u domain.User) ([]interface{}, error) {
+func (s UserService) GetOrders(u domain.User) ([]interface{}, error) {
 	return nil, nil
 }
 
-func (s User) GetOrderByID(id uint, uID uint) ([]interface{}, error) {
+func (s UserService) GetOrderByID(id uint, uID uint) ([]interface{}, error) {
 	return nil, nil
 }

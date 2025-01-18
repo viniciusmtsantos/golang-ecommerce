@@ -10,20 +10,20 @@ import (
 	"github.com/viniciusmtsantos/golang-ecommerce/internal/service"
 )
 
-type User struct {
-	svc service.User
+type UserHandler struct {
+	svc service.UserService
 }
 
 func SetupUserRoutes(rh *rest.RestHandler) {
 
 	app := rh.App
 
-	svc := service.User{
+	svc := service.UserService{
 		Repo: repository.NewUserRepository(rh.DB),
 		Auth: rh.Auth,
 	}
 
-	handler := User{
+	handler := UserHandler{
 		svc: svc,
 	}
 
@@ -32,7 +32,6 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 	pubRoutes.Post("/login", handler.Login)
 
 	pvtRoutes := pubRoutes.Group("/", rh.Auth.Authorize)
-
 	pvtRoutes.Get("/verify", handler.GetVerificationCode)
 	pvtRoutes.Post("/verify", handler.Verify)
 	pvtRoutes.Post("/profile", handler.CreateProfile)
@@ -45,7 +44,7 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 
 }
 
-func (u *User) Register(ctx *fiber.Ctx) error {
+func (h *UserHandler) Register(ctx *fiber.Ctx) error {
 
 	user := dto.UserSignUp{}
 
@@ -56,7 +55,7 @@ func (u *User) Register(ctx *fiber.Ctx) error {
 		})
 	}
 
-	token, err := u.svc.SignUp(user)
+	token, err := h.svc.SignUp(user)
 	if err != nil {
 		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
 			"message": "error on signup",
@@ -69,7 +68,7 @@ func (u *User) Register(ctx *fiber.Ctx) error {
 	})
 }
 
-func (u *User) Login(ctx *fiber.Ctx) error {
+func (h *UserHandler) Login(ctx *fiber.Ctx) error {
 	loginInput := dto.UserLogin{}
 
 	err := ctx.BodyParser(&loginInput)
@@ -79,7 +78,7 @@ func (u *User) Login(ctx *fiber.Ctx) error {
 		})
 	}
 
-	token, err := u.svc.Login(loginInput.Email, loginInput.Password)
+	token, err := h.svc.Login(loginInput.Email, loginInput.Password)
 	if err != nil {
 		return ctx.Status(http.StatusUnauthorized).JSON(&fiber.Map{
 			"message": "please provide correct user id password",
@@ -92,56 +91,87 @@ func (u *User) Login(ctx *fiber.Ctx) error {
 	})
 }
 
-func (u *User) GetVerificationCode(ctx *fiber.Ctx) error {
+func (h *UserHandler) GetVerificationCode(ctx *fiber.Ctx) error {
+
+	user := h.svc.Auth.GetCurrentUser(ctx)
+
+	code, err := h.svc.GetVerificationCode(user)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
+			"message": "unable to generate verification code",
+		})
+	}
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "get verification",
+		"data":    code,
 	})
 }
 
-func (u *User) Verify(ctx *fiber.Ctx) error {
+func (h *UserHandler) Verify(ctx *fiber.Ctx) error {
+
+	var req dto.VerificationCodeInput
+
+	user := h.svc.Auth.GetCurrentUser(ctx)
+
+	err := ctx.BodyParser(&req)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(&fiber.Map{
+			"message": "please provide a valid input",
+		})
+	}
+
+	err = h.svc.VerifyCode(user.ID, req.Code)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(&fiber.Map{
+			"message": err.Error(),
+		})
+	}
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
-		"message": "verify",
+		"message": "verified successfully",
 	})
 }
 
-func (u *User) CreateProfile(ctx *fiber.Ctx) error {
+func (h *UserHandler) CreateProfile(ctx *fiber.Ctx) error {
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "create profile",
 	})
 }
 
-func (u *User) GetProfile(ctx *fiber.Ctx) error {
+func (h *UserHandler) GetProfile(ctx *fiber.Ctx) error {
+
+	user := h.svc.Auth.GetCurrentUser(ctx)
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "get profile",
+		"user":    user,
 	})
 }
 
-func (u *User) AddToCart(ctx *fiber.Ctx) error {
+func (h *UserHandler) AddToCart(ctx *fiber.Ctx) error {
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "add to cart",
 	})
 }
 
-func (u *User) GetCart(ctx *fiber.Ctx) error {
+func (h *UserHandler) GetCart(ctx *fiber.Ctx) error {
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "get cart",
 	})
 }
 
-func (u *User) GetOrders(ctx *fiber.Ctx) error {
+func (h *UserHandler) GetOrders(ctx *fiber.Ctx) error {
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "get orders",
 	})
 }
 
-func (u *User) GetOrder(ctx *fiber.Ctx) error {
+func (h *UserHandler) GetOrder(ctx *fiber.Ctx) error {
 
 	return ctx.Status(http.StatusOK).JSON(&fiber.Map{
 		"message": "get order",

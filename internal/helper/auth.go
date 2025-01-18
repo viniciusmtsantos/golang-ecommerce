@@ -140,9 +140,13 @@ func (a Auth) Authorize(ctx *fiber.Ctx) error {
 	}
 }
 
-func (a Auth) GetCurrentUser(ctx *fiber.Ctx) (domain.User, error) {
+func (a Auth) GetCurrentUser(ctx *fiber.Ctx) domain.User {
 
 	user := ctx.Locals("user")
 
-	return user.(domain.User), nil
+	return user.(domain.User)
+}
+
+func (a Auth) GenerateCode() (int, error) {
+	return randomNumbers(6)
 }
